@@ -19,6 +19,7 @@ boolean drawToScreen = true;
 int playersMax = 4; // (really for this game it is 3, but we support 4 controllers, and 4 is hard-coded many places)
 boolean isGameOver = false;
 int winningPlayer = 0;
+int winningFrameCount = 0;
 PVector[] playerCoord = new PVector[4];
 boolean[] isPlaying = new boolean[4];
 color[] playerColor = new color[4];
@@ -61,9 +62,6 @@ public void draw()
   if (isGameOver)
   {
     drawGameOver();
-    if ((frameCount%5) == 0) {
-      updatePlayerCoordFromInput();
-    }
     return;
   }
 
@@ -170,8 +168,9 @@ void setPlayerPercentAndCheckForGameOver()
     totalBoardPercent = pTotal / totalPlayingField;
   }
   println("percent for p1=" + playerBoardPercent[0] + " p2=" + playerBoardPercent[1] + " p3=" + playerBoardPercent[2] + " total=" + totalBoardPercent);
-  if (totalBoardPercent >= 0.99) {
+  if (totalBoardPercent >= 0.9) {
     isGameOver = true;
+    winningFrameCount = frameCount;
   }
 }
 
@@ -191,7 +190,7 @@ void drawGamePercentIndicator()
       bestPercent = playerBoardPercent[player];
       leadingPlayer = player;
     }
-    else if (playerBoardPercent[player] == bestPercent)
+    else if ((playerBoardPercent[player] - bestPercent) < 0.00001)
     {
       winningColor = color(255,255,255);
       leadingPlayer = -1;
@@ -228,6 +227,13 @@ void drawGamePercentIndicator()
 
 void drawGameOver()
 {
+  if ((frameCount - winningFrameCount) > 200)
+  {
+    setupForNewGame();
+    cube.background(0);
+    return;
+  }
+  // blink winning color every 10 frames
   if (frameCount%20 > 10)
   {
     cube.background(0);
@@ -444,20 +450,13 @@ void setPlayerToStartingPosition(int player)
 // input
 void updatePlayerCoordFromInput()
 {
-  // only used if the game is over
-  boolean wantsNewGame = true;
-
   // loop through and get input
   for ( int player = 0; player < playersMax; player++)
   {
     if ( ! isPlaying[player])
     {
       // do nothing
-      // check for start button pressed
-//      if (gpads[player].getButton("START").pressed())
-//      {
-//        setPlayerToStartingPosition(player);
-//      }
+      continue;
     }
     else
     {
@@ -469,11 +468,7 @@ void updatePlayerCoordFromInput()
       // first check for player pressing the attack button
       if (gpads[player].getButton("BOTTOMBUTTON").pressed())
       {
-        if (isGameOver)
-        {
-          wantsNewGame = (wantsNewGame && true);
-        }
-        else if ( ! isPlayerAnimating[player])
+        if ( ! isPlayerAnimating[player])
         {
           playerAnimationFrameCount[player] = 0;
           isPlayerAnimating[player] = true;
@@ -481,11 +476,6 @@ void updatePlayerCoordFromInput()
           playerAnimationCoord[player].y = space.y;
           playerAnimationCoord[player].z = space.z;
         }
-      }
-      else if (isGameOver)
-      {
-        wantsNewGame = false;
-        continue;
       }
 
       // left
@@ -643,13 +633,6 @@ void updatePlayerCoordFromInput()
         // don't need this, because it's the last thing we're checking
       }
     }
-  }
-
-  // check for all players pressing the button
-  if (isGameOver && wantsNewGame)
-  {
-    setupForNewGame();
-    cube.background(0);
   }
 }
 

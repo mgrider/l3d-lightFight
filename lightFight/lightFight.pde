@@ -18,6 +18,7 @@ boolean drawToScreen = true;
 // game stuff
 int playersMax = 4; // (really for this game it is 3, but we support 4 controllers, and 4 is hard-coded many places)
 boolean isGameOver = false;
+int winningPlayer = 0;
 PVector[] playerCoord = new PVector[4];
 boolean[] isPlaying = new boolean[4];
 color[] playerColor = new color[4];
@@ -59,6 +60,7 @@ public void draw()
 
   if (isGameOver)
   {
+    drawGameOver();
     updatePlayerCoordFromInput();
     return;
   }
@@ -86,10 +88,11 @@ void setupForNewGame()
   playersMax = 4;
   isPlaying = new boolean[playersMax];
   isGameOver = false;
+  winningPlayer = -1;
   // is this player currently playing?
   isPlaying[0] = true;
   isPlaying[1] = true;
-  isPlaying[2] = false;
+  isPlaying[2] = true;
   isPlaying[3] = false;
   // player colors
   playerColor[0] = color(255, 0, 0);
@@ -174,6 +177,7 @@ void drawGamePercentIndicator()
 {
   color winningColor = color(255,255,255);
   float bestPercent = 0.0;
+  int leadingPlayer = -1;
   for (int player = 0; player < playersMax; player++)
   {
     if ( ! isPlaying[player] ) {
@@ -183,12 +187,15 @@ void drawGamePercentIndicator()
     {
       winningColor = playerColor[player];
       bestPercent = playerBoardPercent[player];
+      leadingPlayer = player;
     }
     else if (playerBoardPercent[player] == bestPercent)
     {
       winningColor = color(255,255,255);
+      leadingPlayer = -1;
     }
   }
+  float onlyShowUpTo = 8 * bestPercent;
   for (int x=0; x<8; x+=7) {
     for (int z=0; z<8; z+=7) {
       for (int y=0; y<8; y++)
@@ -196,7 +203,11 @@ void drawGamePercentIndicator()
         space.x = x;
         space.y = y;
         space.z = z;
-        if (y==0 || frameCount%8 == y)
+        if (y>onlyShowUpTo)
+        {
+          cube.setVoxel(space,0);
+        }
+        else if (y==0 || frameCount%8 == y)
         {
           cube.setVoxel(space,winningColor);
         }
@@ -209,28 +220,21 @@ void drawGamePercentIndicator()
   if (isGameOver)
   {
     cube.background(winningColor);
+    winningPlayer = leadingPlayer;
   }
 }
 
-// not used
 void drawGameOver()
 {
-  color winningColor = color(255,255,255);
-  float bestPercent = 0.0;
-  for (int player = 0; player < playersMax; player++)
+  if (frameCount%20 == 0)
   {
-    if ( ! isPlaying[player]) {
-      continue;
-    }
-    if (playerBoardPercent[player] > bestPercent)
-    {
-      winningColor = playerColor[player];
-      bestPercent = playerBoardPercent[player];
-    }
-    else if (playerBoardPercent[player] == bestPercent)
-    {
-      winningColor = color(255,255,255);
-    }
+    cube.background(0);
+    return;
+  }
+  color winningColor = color(255,255,255);
+  if (winningPlayer != -1)
+  {
+    winningColor = playerColor[winningPlayer];
   }
   cube.background(winningColor);
 }

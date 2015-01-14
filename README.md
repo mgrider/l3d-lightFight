@@ -1,5 +1,7 @@
 # l3d-lightFight
-Light Fight is a game for the L3D created by Martin Grider. More info about the L3D at http://l3dcube.com/ http://cubetube.org/
+Light Fight is a game for the L3D created by Martin Grider. More info about the L3D at http://l3dcube.com/ or http://cubetube.org/
+
+Video here: [![https://www.youtube.com/watch?v=cUGXW8xV4vw](http://img.youtube.com/vi/cUGXW8xV4vw/0.jpg)](https://www.youtube.com/watch?v=cUGXW8xV4vw) 
 
 # controllers
 This project requires XBox 360 controllers (or equivalent) to run propperly.
@@ -12,8 +14,7 @@ On OSX, you'll need to make sure a driver is installed. (For example: https://gi
 3. For now, change the isPlaying[] true/false variables in setup() to match the number of Xbox controllers you have plugged into your computer.
 
 # todo
-	check for game over conditions
-	port to native code for better light variations and control (requires USB shield)
+* port to native code for better light variations and control (requires USB shield)
 
 # credits
 

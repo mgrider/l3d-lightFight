@@ -13,12 +13,16 @@ ControlDevice[] gpads;
 L3D cube;
 String accessToken = "2d3fda69fc6af796a1bdd2ae849de2cb292268e4";
 String coreName = "L3D";
+boolean drawToScreen = true;
 
 // game stuff
-int playersMax = 4;
+int playersMax = 4; // (really for this game it is 3, but we support 4 controllers, and 4 is hard-coded many places)
+boolean isGameOver = false;
 PVector[] playerCoord = new PVector[4];
 boolean[] isPlaying = new boolean[4];
 color[] playerColor = new color[4];
+float[] playerBoardPercent = new float[4];
+float totalBoardPercent = 0.0;
 int framesForAnimation = 10;
 int totalAnimationDistance = 4;
 boolean[] isPlayerAnimating = new boolean[4];
@@ -32,21 +36,56 @@ byte animationColorIncrement = (byte)128;
 void setup()
 {
   // processing
-  size(600, 600, P3D);
-
-  // l3d
-  cube = new L3D(this, accessToken);
-  cube.enableDrawing();  //draw the virtual cube
-// disabling multicastStreaming (for hopefully better performance)
-//  cube = new L3D(this, accessToken);
-//  cube.enableMulticastStreaming();  //stream the data over UDP to any L3D cubes that are listening on the local network
-  cube.streamToCore(coreName);
-  cube.enablePoseCube();
-//  cube.background(color(255,255,255));
+  if (drawToScreen) {
+    size(600, 600, P3D);
+  }
 
   // game related setup
+  setupForNewGame();
+
+  // l3d
+  setupL3D();
+
+  // controllers
+  setupControllers();
+}
+
+public void draw()
+{
+  //set the processing sketch bg and cube bg to black
+  if (drawToScreen) {
+    this.background(0);
+  }
+
+  if (isGameOver)
+  {
+    updatePlayerCoordFromInput();
+    return;
+  }
+
+  // draw background (TODO: make this fancier than just black, undulating water effect maybe?)
+  drawCubeBackground();
+
+  // check for input every X frame
+  if ((frameCount%2) == 0) {
+    updatePlayerCoordFromInput();
+  }
+
+  drawPlayers();
+  drawPlayerAnimations();
+
+  setPlayerPercentAndCheckForGameOver();
+  drawGamePercentIndicator();
+}
+
+
+// game setup
+
+void setupForNewGame()
+{
   playersMax = 4;
   isPlaying = new boolean[playersMax];
+  isGameOver = false;
   // is this player currently playing?
   isPlaying[0] = true;
   isPlaying[1] = true;
@@ -63,6 +102,7 @@ void setup()
     isPlayerAnimating[i] = false;
     playerAnimationCoord[i] = new PVector(0,0,0);
     playerCoord[i] = new PVector(0,0,0);
+    playerBoardPercent[i] = 0.0;
     if (isPlaying[i]) {
       setPlayerToStartingPosition(i);
     }
@@ -71,42 +111,130 @@ void setup()
   {
     tempSpace[i] = new PVector(0,0,0);
   }
-
-  // controllers
-  setupControllers();
 }
 
-public void draw()
+
+// game over stuff
+
+void setPlayerPercentAndCheckForGameOver()
 {
-  //set the processing sketch bg and cube bg to black
-  this.background(0);
-
-  // draw background (TODO: make this fancier than just black, undulating water effect?)
-  drawCubeBackground();
-
-  // check for input every X frame
-  if ((frameCount%2) == 0) {
-    updatePlayerCoodFromInput();
+  int p1=0, p2=0, p3=0, pTotal=0;
+  float r=0.0, g=0.0, b=0.0;
+  color current;
+  for (int x=1; x<7; x++) {
+    for (int z=1; z<7; z++) {
+      for (int y=0; y<8; y++)
+      {
+        space.x = x;
+        space.z = z;
+        space.y = y;
+        current = cube.getVoxel(space);
+        if (current == 0) {
+          continue;
+        }
+        r = red(current);
+        g = green(current);
+        b = blue(current);
+        if (r > 0) {
+          p1++;
+        }
+        if (g > 0) {
+          p2++;
+        }
+        if (b > 0) {
+          p3++;
+        }
+        if (r>0 || g>0 || b>0) {
+          pTotal++;
+        }
+      }
+    }
   }
-
-  drawPlayers();
-  drawPlayerAnimations();
+  // calculate percentages
+  float totalPlayingField = 6.0 * 6.0 * 8.0;
+  if (isPlaying[0] && p1 > 0) {
+    playerBoardPercent[0] = p1 / totalPlayingField;
+  }
+  if (isPlaying[1] && p2 > 0) {
+    playerBoardPercent[1] = p2 / totalPlayingField;
+  }
+  if (isPlaying[2] && p3 > 0) {
+    playerBoardPercent[2] = p3 / totalPlayingField;
+  }
+  if (pTotal > 0) {
+    totalBoardPercent = pTotal / totalPlayingField;
+  }
+  println("percent for p1=" + playerBoardPercent[0] + " p2=" + playerBoardPercent[1] + " p3=" + playerBoardPercent[2] + " total=" + totalBoardPercent);
+  if (totalBoardPercent == 1.0) {
+    isGameOver = true;
+  }
 }
 
-
-// game stuff
-
-void checkForGameOver()
+void drawGamePercentIndicator()
 {
-//  print("playerCoord is ", playerCoord, " and goal is ", goalCoord, "\n");
-//  for ( int player = 0; player < playersMax; player++)
-//  {
-//    if (playerCoord[player].x == goalCoord.x && playerCoord[player].y == goalCoord.y && playerCoord[player].z == goalCoord.z)
-//    {
-//      newGoal();
-//    }
-//  }
+  color winningColor = color(255,255,255);
+  float bestPercent = 0.0;
+  for (int player = 0; player < playersMax; player++)
+  {
+    if ( ! isPlaying[player] ) {
+      continue;
+    }
+    if (playerBoardPercent[player] > bestPercent)
+    {
+      winningColor = playerColor[player];
+      bestPercent = playerBoardPercent[player];
+    }
+    else if (playerBoardPercent[player] == bestPercent)
+    {
+      winningColor = color(255,255,255);
+    }
+  }
+  for (int x=0; x<8; x+=7) {
+    for (int z=0; z<8; z+=7) {
+      for (int y=0; y<8; y++)
+      {
+        space.x = x;
+        space.y = y;
+        space.z = z;
+        if (y==0 || frameCount%8 == y)
+        {
+          cube.setVoxel(space,winningColor);
+        }
+        else {
+          cube.setVoxel(space,0);
+        }
+      }
+    }
+  }
+  if (isGameOver)
+  {
+    cube.background(winningColor);
+  }
 }
+
+// not used
+void drawGameOver()
+{
+  color winningColor = color(255,255,255);
+  float bestPercent = 0.0;
+  for (int player = 0; player < playersMax; player++)
+  {
+    if ( ! isPlaying[player]) {
+      continue;
+    }
+    if (playerBoardPercent[player] > bestPercent)
+    {
+      winningColor = playerColor[player];
+      bestPercent = playerBoardPercent[player];
+    }
+    else if (playerBoardPercent[player] == bestPercent)
+    {
+      winningColor = color(255,255,255);
+    }
+  }
+  cube.background(winningColor);
+}
+
 
 // drawing random stuff
 
@@ -175,7 +303,7 @@ void drawPlayerAnimations()
         tempSpace[3].set( space.x, space.y-1, space.z);
       }
       // change the color at the current space
-System.out.println("ready to save new color at space x:" + space.x + " y:" + space.y + " z:" + space.z);
+      //System.out.println("ready to save new color at space x:" + space.x + " y:" + space.y + " z:" + space.z);
       cube.setVoxel(space, playerColor[player]);
       // change the colors at the immediately surrounding spaces
       for ( int i=0; i<4; i++)
@@ -190,34 +318,6 @@ System.out.println("ready to save new color at space x:" + space.x + " y:" + spa
           continue;
         }
         cube.addVoxel(tempSpace[i].x,tempSpace[i].y,tempSpace[i].z,playerColor[player]);
-        // note, not doing this fancy adding thing below, for now...
-        /*
-        int colorInt = cube.getVoxel(tempSpace[i]);
-        byte[] colorByte = colorBytes(colorInt);
-        switch (player)
-        {
-          case 0: {
-            colorByte[0] = (byte)255;
-            colorByte[1] = (colorByte[1] - animationColorIncrement < 0) ? (byte)0 : (byte)(colorByte[1] - animationColorIncrement);
-            colorByte[2] = (colorByte[2] - animationColorIncrement < 0) ? (byte)0 : (byte)(colorByte[2] - animationColorIncrement);
-            break;
-          }
-          case 1: {
-            colorByte[1] = (byte)255;
-            colorByte[0] = (colorByte[0] - animationColorIncrement < 0) ? 0 : (byte)(colorByte[0] - animationColorIncrement);
-            colorByte[2] = (colorByte[2] -animationColorIncrement < 0) ? 0 : (byte)(colorByte[2] - animationColorIncrement);
-            break;
-          }
-          case 2: {
-            colorByte[2] = (byte)255;
-            colorByte[1] = (colorByte[1] - animationColorIncrement < 0) ? 0 : (byte)(colorByte[1] - animationColorIncrement);
-            colorByte[0] = (colorByte[0] - animationColorIncrement < 0) ? 0 : (byte)(colorByte[0] - animationColorIncrement);
-            break;
-          }
-        }
-        cube.setVoxel(tempSpace[i],color(colorByte[0],colorByte[1],colorByte[2]));
-        */
-        // none of the above code is used, for now
       }
       // check for done
       if (depth >= totalAnimationDistance)
@@ -227,16 +327,6 @@ System.out.println("ready to save new color at space x:" + space.x + " y:" + spa
     }
   }
 }
-
-  byte[] colorBytes(int col) {
-    byte[] array = new byte[3];
-    for (int i = 0; i < 3; i++)
-      array[i] = (byte) ((col >> (8 * (2 - i))) & 255); // array[0] (red)=
-                                // col>>16 & 255
-    // array[1] (green)=col>>8 & 255
-    // array[2] (blue) = col &255
-    return array;
-  }
 
 void drawCubeBackground()
 {
@@ -255,9 +345,10 @@ void drawCubeBackground()
           space.x = x;
           space.y = y;
           space.z = z;
-          cube.setVoxel(space,color(0,0,0));
+          cube.setVoxel(space,0);
         }
-        else {
+        else
+        {
           z = 6;
           continue;
         }
@@ -313,8 +404,11 @@ void setPlayerToStartingPosition(int player)
 }
 
 // input
-void updatePlayerCoodFromInput()
+void updatePlayerCoordFromInput()
 {
+  // only used if the game is over
+  boolean wantsNewGame = true;
+
   // loop through and get input
   for ( int player = 0; player < playersMax; player++)
   {
@@ -335,14 +429,25 @@ void updatePlayerCoodFromInput()
       space.z = playerCoord[player].z;
 
       // first check for player pressing the attack button
-      if (( ! isPlayerAnimating[player]) &&
-          gpads[player].getButton("BOTTOMBUTTON").pressed())
+      if (gpads[player].getButton("BOTTOMBUTTON").pressed())
       {
-        playerAnimationFrameCount[player] = 0;
-        isPlayerAnimating[player] = true;
-        playerAnimationCoord[player].x = space.x;
-        playerAnimationCoord[player].y = space.y;
-        playerAnimationCoord[player].z = space.z;
+        if (isGameOver)
+        {
+          wantsNewGame = (wantsNewGame && true);
+        }
+        else if ( ! isPlayerAnimating[player])
+        {
+          playerAnimationFrameCount[player] = 0;
+          isPlayerAnimating[player] = true;
+          playerAnimationCoord[player].x = space.x;
+          playerAnimationCoord[player].y = space.y;
+          playerAnimationCoord[player].z = space.z;
+        }
+      }
+      else if (isGameOver)
+      {
+        wantsNewGame = false;
+        continue;
       }
 
       // left
@@ -501,6 +606,13 @@ void updatePlayerCoodFromInput()
       }
     }
   }
+
+  // check for all players pressing the button
+  if (isGameOver && wantsNewGame)
+  {
+    setupForNewGame();
+    cube.background(0);
+  }
 }
 
 void setupControllers()
@@ -539,4 +651,22 @@ void setupControllers()
       System.exit(-1); // End the program NOW!
     }
   }
+}
+
+void setupL3D()
+{
+  cube = new L3D(this, accessToken);
+
+  if (drawToScreen) {
+    cube.enableDrawing();  //draw the virtual cube
+    cube.enablePoseCube();
+  }
+
+// note, disabling multicastStreaming gives MUCH better performance
+//  cube = new L3D(this);
+//  cube.enableMulticastStreaming();  //stream the data over UDP to any L3D cubes that are listening on the local network
+
+  // stream directly to the L3D here (note, requires internet connection for setup)
+  cube.streamToCore(coreName);
+//  cube.background(color(255,255,255));
 }

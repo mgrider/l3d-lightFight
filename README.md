@@ -10,3 +10,14 @@ On OSX, you'll need to make sure a driver is installed. (For example: https://gi
 1. This is a streaming app, so you'll need to setup the listener on your L3D.
 2. You'll need to change the accessToken and coreName variables to those for your L3D.
 3. For now, change the isPlaying[] true/false variables in setup() to match the number of Xbox controllers you have plugged into your computer.
+
+# todo
+	check for game over conditions
+	port to native code for better light variations and control (requires USB shield)
+
+# credits
+
+Light Fight uses the L3D Processing library: https://github.com/enjrolas/L3D-library/
+
+It also uses the Game Control Plus Processing Library: http://lagers.org.uk/gamecontrol/
+

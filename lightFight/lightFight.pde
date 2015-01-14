@@ -31,7 +31,7 @@ int[] playerAnimationFrameCount = new int[4];
 PVector[] playerAnimationCoord = new PVector[4];
 PVector space = new PVector(0,0,0);
 PVector[] tempSpace = new PVector[4];
-byte animationColorIncrement = (byte)128;
+float animationColorIncrement = 128.0;
 
 
 void setup()
@@ -61,7 +61,9 @@ public void draw()
   if (isGameOver)
   {
     drawGameOver();
-    updatePlayerCoordFromInput();
+    if ((frameCount%5) == 0) {
+      updatePlayerCoordFromInput();
+    }
     return;
   }
 
@@ -168,7 +170,7 @@ void setPlayerPercentAndCheckForGameOver()
     totalBoardPercent = pTotal / totalPlayingField;
   }
   println("percent for p1=" + playerBoardPercent[0] + " p2=" + playerBoardPercent[1] + " p3=" + playerBoardPercent[2] + " total=" + totalBoardPercent);
-  if (totalBoardPercent == 1.0) {
+  if (totalBoardPercent >= 0.99) {
     isGameOver = true;
   }
 }
@@ -226,7 +228,7 @@ void drawGamePercentIndicator()
 
 void drawGameOver()
 {
-  if (frameCount%20 == 0)
+  if (frameCount%20 > 10)
   {
     cube.background(0);
     return;
@@ -244,6 +246,9 @@ void drawGameOver()
 
 void drawPlayers()
 {
+  if (frameCount%20 > 10) {
+    return;
+  }
   // set the playerCoord on the cube
   for ( int player = 0; player < playersMax; player = player + 1)
   {
@@ -310,6 +315,8 @@ void drawPlayerAnimations()
       //System.out.println("ready to save new color at space x:" + space.x + " y:" + space.y + " z:" + space.z);
       cube.setVoxel(space, playerColor[player]);
       // change the colors at the immediately surrounding spaces
+      color c;
+      float r=0,g=0,b=0;
       for ( int i=0; i<4; i++)
       {
         if (tempSpace[i].x < 0 ||
@@ -321,7 +328,34 @@ void drawPlayerAnimations()
         {
           continue;
         }
-        cube.addVoxel(tempSpace[i].x,tempSpace[i].y,tempSpace[i].z,playerColor[player]);
+        c = cube.getVoxel(tempSpace[i]);
+        switch (player) {
+          case 0: {
+            r = 255;
+            g = green(c) - animationColorIncrement;
+            if (g < 0.0) { g = 0; }
+            b = blue(c) - animationColorIncrement;
+            if (b < 0.0) { b = 0; }
+            break;
+          }
+          case 1: {
+            r = red(c) - animationColorIncrement;
+            if (r < 0.0) { r = 0; }
+            g = 255;
+            b = blue(c) - animationColorIncrement;
+            if (b < 0.0) { b = 0; }
+            break;
+          }
+          case 2: {
+            r = red(c) - animationColorIncrement;
+            if (r < 0.0) { r = 0; }
+            g = green(c) - animationColorIncrement;
+            if (g < 0.0) { g = 0; }
+            b = 255;
+            break;
+          }
+        }
+        cube.setVoxel(tempSpace[i],color(r,g,b));
       }
       // check for done
       if (depth >= totalAnimationDistance)

@@ -1,0 +1,17 @@
+gamepad1
+LEFTX	 x on the left joystick	3	SLIDER	x	0	1.0	0.0
+LEFTY	 y on the left joystick	3	SLIDER	y	0	1.0	0.0
+RIGHTX	x on the right joystick	3	SLIDER	rx	0	1.0	0.0
+RIGHTY	y on the right joystick	3	SLIDER	ry	0	1.0	0.0
+LEFTTRIGGER	left trigger	3	SLIDER	z	0	1.0	0.0
+RIGHTTRIGGER	right trigger	3	SLIDER	rz	0	1.0	0.0
+UP	d-pad up	1	BUTTON	11	0	0.0	0.0
+DOWN	d-pad down	1	BUTTON	12	0	0.0	0.0
+LEFT	d-pad left	1	BUTTON	13	0	0.0	0.0
+RIGHT	d-pad right	1	BUTTON	14	0	0.0	0.0
+START	start button	1	BUTTON	8	0	0.0	0.0
+SELECT	select button	1	BUTTON	9	0	0.0	0.0
+BOTTOMBUTTON	bottom "a" button	1	BUTTON	0	0	0.0	0.0
+RIGHTBUTTON	right "b" button	1	BUTTON	1	0	0.0	0.0
+LEFTBUTTON	left "x" button	1	BUTTON	2	0	0.0	0.0
+TOPBUTTON	top "y" button	1	BUTTON	3	0	0.0	0.0

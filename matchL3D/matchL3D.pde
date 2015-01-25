@@ -33,15 +33,21 @@ int level = 1;
 int score = 0;
 int gameboardColor = 0;
 boolean isAnimatingMatches = false;
-int matchAnimationBlinkSpeed = 12;
+int matchAnimationBlinkSpeed = 20;
 int matchAnimationFrameCount = 0;
 int matchAnimationBlinkCount = 0;
 int matchAnimationBlinkTotal = 4; // actually divide by 2, since a "blink" is really only either black or the original color, not both
 PVector[] animatingMatchLocations = new PVector[(8*8*8)];
 int[] animatingMatchColors = new int[(8*8*8)];
 PVector[] tempLocations = new PVector[(8*8*8)];
+int tempIndex = 0;
 PVector[] possibleDirections = new PVector[6];
 int numberRequiredForMatch = 3;
+
+// debug
+boolean debugMatchRemoval = true;
+boolean debugMatchDiscovery = false;
+boolean debugFallingAfterAnimation = true;
 
 
 void setup()
@@ -258,7 +264,8 @@ void checkGameboardForMatches()
       for (int y=0; y<6; y++)
       {
         tempVector.set(x,y,z);
-        if ( ! positionIsEmpty(tempVector) )
+        if (( ! positionIsEmpty(tempVector)) &&
+            ( ! pVectorArrayContainsPosition( animatingMatchLocations, tempVector )) )
         {
           emptyPVectorArray( tempLocations );
           tempFoundMatches = numberOfMatchesAtPosition(tempVector);
@@ -266,6 +273,10 @@ void checkGameboardForMatches()
           {
             for (int i=0; i<tempFoundMatches; i++)
             {
+              if (debugMatchRemoval)
+              {
+                println("position of tempLocation is " + tempLocations[i]);
+              }
               animatingMatchLocations[matchIndex].set(tempLocations[i]);
               animatingMatchColors[matchIndex] = cube.getVoxel(tempLocations[i]);
               matchIndex++;
@@ -291,17 +302,21 @@ int numberOfMatchesAtPosition(PVector position)
 {
   int matchesFound = 0;
   tempColor = cube.getVoxel(position);
-  PVector temp = new PVector(position.x, position.y, position.z);
-  matchesFound = recursiveCheckForColorAtPosition(position, tempColor, matchesFound);
+  tempIndex = 0;
+  PVector tempPosition = new PVector(position.x, position.y, position.z);
+  matchesFound = recursiveCheckForColorAtPosition(tempPosition, tempColor);
   if (matchesFound < numberRequiredForMatch)
   {
     return 0;
   }
-  println("found " + matchesFound + " matches at position " + position + ".");
+  if (debugMatchRemoval)
+  {
+    println("found " + matchesFound + " matches at position " + tempPosition + ".");
+  }
   return matchesFound;
 }
 
-int recursiveCheckForColorAtPosition(PVector position, color colorToCheck, int index)
+int recursiveCheckForColorAtPosition(PVector position, color colorToCheck)
 {
   // return 0 if position has been checked (in tempLocations)
   if (pVectorArrayContainsPosition(tempLocations, position))
@@ -310,8 +325,12 @@ int recursiveCheckForColorAtPosition(PVector position, color colorToCheck, int i
   }
   int returnValue = 0;
   // add position to tempLocations (checked list)
-  tempLocations[index].set(position);
-  index++;
+  tempLocations[tempIndex].set(position);
+  tempIndex++;
+  returnValue++;
+  if (debugMatchDiscovery) {
+    println("checking position: " + position + "in recursive for index " + tempIndex + ".");
+  }
   // check all directions:
   for (int d = 0; d < possibleDirections.length; d++)
   {
@@ -320,9 +339,8 @@ int recursiveCheckForColorAtPosition(PVector position, color colorToCheck, int i
         ( ! pVectorArrayContainsPosition(tempLocations, tempVector)) &&
         colorToCheck == cube.getVoxel(tempVector))
     {
-      returnValue = returnValue + 1;
       PVector tempTemp = new PVector(tempVector.x, tempVector.y, tempVector.z);
-      returnValue = returnValue + recursiveCheckForColorAtPosition(tempTemp, colorToCheck, index);
+      returnValue = returnValue + recursiveCheckForColorAtPosition(tempTemp, colorToCheck);
     }
   }
   return returnValue;
@@ -341,6 +359,9 @@ boolean pVectorArrayContainsPosition(PVector[] array, PVector position)
              array[i].y == position.y &&
              array[i].z == position.z)
     {
+      if (debugMatchDiscovery) {
+        println("found position: " + position + " in pVectorArrayContainsPosition");
+      }
       return true;
     }
   }
@@ -424,6 +445,7 @@ void drawSquare()
     if ( matchAnimationFrameCount > matchAnimationBlinkSpeed )
     {
       continueAnimatingMatches();
+      matchAnimationFrameCount = 0;
     }
   }
   if (needsToDraw)
@@ -469,15 +491,85 @@ void continueAnimatingMatches()
   if ( matchAnimationBlinkCount % 2 == 0 )
   {
     // turn them black
-    for ( int i=0; i< 
+    for ( int i=0; i< animatingMatchLocations.length; i++)
+    {
+      if (animatingMatchLocations[i].x < 0)
+      {
+        break;
+      }
+      cube.setVoxel(animatingMatchLocations[i], gameboardColor);
+    }
   }
   else
   {
     // turn them their original color
+    for ( int i=0; i< animatingMatchLocations.length; i++)
+    {
+      if (animatingMatchLocations[i].x < 0)
+      {
+        break;
+      }
+      cube.setVoxel(animatingMatchLocations[i], animatingMatchColors[i]);
+    }
   }
   matchAnimationBlinkCount++;
   if (matchAnimationBlinkCount > matchAnimationBlinkTotal)
   {
+    // set them all to cube bg color
+    for ( int i=0; i<animatingMatchLocations.length; i++ )
+    {
+      if (animatingMatchLocations[i].x < 0)
+      {
+        break;
+      }
+      cube.setVoxel(animatingMatchLocations[i], gameboardColor);
+    }
+    // move everything empty down (immediately)
+    // TODO: make these fall the same as the square
+    int tempY = 0;
+    int yDiff = 0;
+    for (int x=0; x<8; x++)
+    {
+      for (int z=0; z<8; z++)
+      {
+        for (int y=0; y<7; y++) // don't need to check the top row
+        {
+          tempVector.set(x,y,z);
+          if (positionIsEmpty(tempVector))
+          {
+            for (int yAbove = y+1; y<8; y++)
+            {
+              tempVector.set(x,yAbove,z);
+              if ( ! positionIsEmpty(tempVector))
+              {
+                yDiff = yAbove - y;
+                for (int aY = y; (aY+yDiff) < 8; aY++)
+                {
+                  tempVector.set(x,aY,z);
+                  if (aY > 5)
+                  {
+                    cube.setVoxel(tempVector, 0);
+                  }
+                  else
+                  {
+                    if ((aY+yDiff) > 5)
+                    {
+                      cube.setVoxel(tempVector,gameboardColor);
+                    }
+                    else
+                    {
+                      cube.setVoxel(tempVector,cube.getVoxel(x,(aY+yDiff),z));
+                    }
+                  }
+                }
+                break;
+              }
+            }
+          }
+        }
+      }
+    }
+    isAnimatingMatches = false;
   }
 }
 

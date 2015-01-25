@@ -113,6 +113,7 @@ void setupForNewGame()
   isGameOver = false;
   level = 1;
   score = 0;
+  numberRequiredForMatch = 3;
   colorCount = 4; // for level 1
   // is this player currently playing?
   isPlaying[0] = true;
@@ -284,6 +285,8 @@ void checkGameboardForMatches()
           tempFoundMatches = numberOfMatchesAtPosition(tempVector);
           if (tempFoundMatches > 0)
           {
+            // here we have a valid match!
+            // save it in animatingMatchLocations[]
             for (int i=0; i<tempFoundMatches; i++)
             {
               if (debugMatchRemoval)
@@ -294,21 +297,17 @@ void checkGameboardForMatches()
               animatingMatchColors[matchIndex] = cube.getVoxel(tempLocations[i]);
               matchIndex++;
             }
+            // only allow one match at a time
+            startAnimatingMatches();
+            return;
           }
         }
       }
     }
   }
-  // if we found any set this
-  if (matchIndex > 0)
-  {
-    startAnimatingMatches();
-  }
-  else
-  {
-    // check for game over
-    checkForGameOver();
-  }
+  // we didn't find any matches, so...
+  // check for game over
+  checkForGameOver();
 }
 
 int numberOfMatchesAtPosition(PVector position)
@@ -423,12 +422,18 @@ void drawGameOver()
 
 void checkForGameOver()
 {
-  // only need to check the "top" pieces of the square
-  for (int i=4; i<8; i++)
+  // check all the top two rows and see if any squares are not black
+  for (int x=0; x<8; x++)
   {
-    if (squareCoords[i].y > 5)
+    for (int z=0; z<8; z++)
     {
-      isGameOver = true;
+      tempVector.set(x,6,z);
+      tempColor = cube.getVoxel(tempVector);
+      if (( ! pVectorArrayContainsPosition(squareCoords,tempVector)) &&
+          tempColor != 0)
+      {
+        isGameOver = true;
+      }
     }
   }
 }
@@ -537,6 +542,14 @@ void continueAnimatingMatches()
       }
       cube.setVoxel(animatingMatchLocations[i], gameboardColor);
     }
+    // update the level & score
+    score = score + (level * animatingMatchLocations.length);
+    numberRequiredForMatch++;
+    if (numberRequiredForMatch > 8)
+    {
+      level++;
+      numberRequiredForMatch = 3;
+    }
     if (debugFallingAfterAnimation)
     {
       println("in continueAnimatingMatches, dropping things above animatingMatchLocations[].");
@@ -596,6 +609,7 @@ void continueAnimatingMatches()
       }
     }
     isAnimatingMatches = false;
+    checkGameboardForMatches();
   }
 }
 

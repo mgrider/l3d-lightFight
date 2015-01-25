@@ -8,6 +8,12 @@ import L3D.*;
 ControlIO control;
 Configuration config;
 ControlDevice[] gpads;
+int controllerFrameRepeat = 10;
+boolean[] previousLeft = new boolean[4];
+boolean[] previousRight = new boolean[4];
+boolean[] previousUp = new boolean[4];
+boolean[] previousDown = new boolean[4];
+int keyboardPlayerIndex = 3; // set to 3 to "turn off" keyboard input
 
 // L3D stuff
 L3D cube;
@@ -68,10 +74,8 @@ public void draw()
   // draw background (TODO: make this fancier than just black, undulating water effect maybe?)
   drawCubeBackground();
 
-  // check for input every X frame
-  if ((frameCount%2) == 0) {
-    updatePlayerCoordFromInput();
-  }
+  // check for input every frame
+  updatePlayerCoordFromInput();
 
   drawPlayers();
   drawPlayerAnimations();
@@ -91,9 +95,11 @@ void setupForNewGame()
   winningPlayer = -1;
   // is this player currently playing?
   isPlaying[0] = true;
-  isPlaying[1] = true;
-  isPlaying[2] = true;
+  isPlaying[1] = false;
+  isPlaying[2] = false;
   isPlaying[3] = false;
+  // is anyone using the keyboard?
+  keyboardPlayerIndex = 0;
   // player colors
   playerColor[0] = color(255, 0, 0);
   playerColor[1] = color(0, 255, 0);
@@ -167,8 +173,9 @@ void setPlayerPercentAndCheckForGameOver()
   if (pTotal > 0) {
     totalBoardPercent = pTotal / totalPlayingField;
   }
-  println("percent for p1=" + playerBoardPercent[0] + " p2=" + playerBoardPercent[1] + " p3=" + playerBoardPercent[2] + " total=" + totalBoardPercent);
-  if (totalBoardPercent >= 0.9) {
+  if (totalBoardPercent >= 0.9)
+  {
+    println("percent for p1=" + playerBoardPercent[0] + " p2=" + playerBoardPercent[1] + " p3=" + playerBoardPercent[2] + " total=" + totalBoardPercent);
     isGameOver = true;
     winningFrameCount = frameCount;
   }
@@ -453,7 +460,8 @@ void updatePlayerCoordFromInput()
   // loop through and get input
   for ( int player = 0; player < playersMax; player++)
   {
-    if ( ! isPlaying[player])
+    if ( ! isPlaying[player] ||
+        player == keyboardPlayerIndex)
     {
       // do nothing
       continue;
@@ -479,72 +487,181 @@ void updatePlayerCoordFromInput()
       }
 
       // left
-      switch ((int)space.x)
+      if (gpads[player].getButton("LEFT").pressed())
       {
-        case 0: { // left side
-          if (space.z == 1) {
-            space.z = 0;
-            space.x = 1;
-          }
-          else {
-            space.z = space.z - 1;
-          }
-          break;
-        }
-        case 1: { // round the corner?
-          if (space.z == 7) {
-            space.z = 6;
-            space.x = 0;
-          }
-          else if (space.z == 0) {
-            space.x = 2;
-          }
-          break;
-        }
-        case 6: { /// round the corner?
-          if (space.z == 7) {
-            space.x = 5;
-          }
-          else if (space.z == 0) {
-            space.x = 7;
-            space.z = 1;
-          }
-          break;
-        }
-        case 7: {
-          if (space.z == 6) {
-            space.x = 6;
-            space.z = 7;
-          }
-          else {
-            space.z = space.z + 1;
-          }
-          break;
-        }
-        default: {
-          if (space.z == 0) {
-            // back wall (reverse)
-            space.x = space.x + 1;
-          }
-          else {
-            space.x = space.x - 1;
-          }
-          break;
+        if (( ! previousLeft[player]) ||
+            (frameCount%controllerFrameRepeat == 0))
+        {
+          previousLeft[player] = true;
+          // what spot should we be checking?
+          updateSpaceForPlayerCoord(player,LEFT);
         }
       }
-      if (gpads[player].getButton("LEFT").pressed() &&
-          ( ! positionContainsPlayer(space)))
+      else
       {
-        playerCoord[player].x = space.x;
-        playerCoord[player].y = space.y;
-        playerCoord[player].z = space.z;
-      }
-      else {
-        space.x = playerCoord[player].x;
-        space.y = playerCoord[player].y;
-        space.z = playerCoord[player].z;
+        previousLeft[player] = false;
       }
       // right
+      if (gpads[player].getButton("RIGHT").pressed())
+      {
+        if (( ! previousRight[player]) ||
+            (frameCount%controllerFrameRepeat == 0))
+        {
+          previousRight[player] = true;
+          // what spot should we be checking?
+          updateSpaceForPlayerCoord(player,RIGHT);
+        }
+      }
+      else
+      {
+        previousRight[player] = false;
+      }
+      // up
+      if (gpads[player].getButton("UP").pressed())
+      {
+        if (( ! previousUp[player]) ||
+            (frameCount%controllerFrameRepeat == 0))
+        {
+          previousUp[player] = true;
+          // what spot should we be checking?
+          updateSpaceForPlayerCoord(player,UP);
+        }
+      }
+      else
+      {
+        previousUp[player] = false;
+      }
+      // down
+      if (gpads[player].getButton("DOWN").pressed())
+      {
+        if (( ! previousDown[player]) ||
+            (frameCount%controllerFrameRepeat == 0))
+        {
+          previousDown[player] = true;
+          // what spot should we be checking?
+          updateSpaceForPlayerCoord(player,DOWN);
+        }
+      }
+      else
+      {
+        previousDown[player] = false;
+      }
+    }
+  }
+}
+
+void keyPressed()
+{
+  if(keyboardPlayerIndex > -1 && keyboardPlayerIndex < 3)
+  {
+    if(key == CODED)
+    {
+      switch(keyCode)
+      {
+        case UP: {
+          break;
+        }
+        case LEFT: {
+          break;
+        }
+        case DOWN: {
+          break;
+        }
+        case RIGHT: {
+          break;
+        }
+      }
+    }
+    else if (key == ENTER || key == RETURN)
+    {
+      if ( ! isPlayerAnimating[keyboardPlayerIndex])
+      {
+        playerAnimationFrameCount[keyboardPlayerIndex] = 0;
+        isPlayerAnimating[keyboardPlayerIndex] = true;
+        space.x = playerCoord[keyboardPlayerIndex].x;
+        space.y = playerCoord[keyboardPlayerIndex].y;
+        space.z = playerCoord[keyboardPlayerIndex].z;
+        playerAnimationCoord[keyboardPlayerIndex].x = space.x;
+        playerAnimationCoord[keyboardPlayerIndex].y = space.y;
+        playerAnimationCoord[keyboardPlayerIndex].z = space.z;
+      }
+    }
+  }
+}
+
+void updateSpaceForPlayerCoord(int player, int direction)
+{
+  // this assumes space has already been initialized with playerCoord
+  switch (direction)
+  {
+    case LEFT: {
+      switch ((int)space.x)
+      {
+        case 0: { // left side
+          if (space.z == 1) {
+            space.z = 0;
+            space.x = 1;
+          }
+          else {
+            space.z = space.z - 1;
+          }
+          break;
+        }
+        case 1: { // round the corner?
+          if (space.z == 7) {
+            space.z = 6;
+            space.x = 0;
+          }
+          else if (space.z == 0) {
+            space.x = 2;
+          }
+          break;
+        }
+        case 6: { /// round the corner?
+          if (space.z == 7) {
+            space.x = 5;
+          }
+          else if (space.z == 0) {
+            space.x = 7;
+            space.z = 1;
+          }
+          break;
+        }
+        case 7: {
+          if (space.z == 6) {
+            space.x = 6;
+            space.z = 7;
+          }
+          else {
+            space.z = space.z + 1;
+          }
+          break;
+        }
+        default: {
+          if (space.z == 0) {
+            // back wall (reverse)
+            space.x = space.x + 1;
+          }
+          else {
+            space.x = space.x - 1;
+          }
+          break;
+        }
+      }
+      if ( ! positionContainsPlayer(space))
+      {
+        playerCoord[player].x = space.x;
+        playerCoord[player].y = space.y;
+        playerCoord[player].z = space.z;
+      }
+      else {
+        space.x = playerCoord[player].x;
+        space.y = playerCoord[player].y;
+        space.z = playerCoord[player].z;
+      }
+      break;
+    }
+    case RIGHT: {
       switch ((int)space.x)
       {
         case 0: { // left side
@@ -598,8 +715,7 @@ void updatePlayerCoordFromInput()
           break;
         }
       }
-      if (gpads[player].getButton("RIGHT").pressed() &&
-          ( ! positionContainsPlayer(space)))
+      if ( ! positionContainsPlayer(space))
       {
         playerCoord[player].x = space.x;
         playerCoord[player].y = space.y;
@@ -610,10 +726,11 @@ void updatePlayerCoordFromInput()
         space.y = playerCoord[player].y;
         space.z = playerCoord[player].z;
       }
-      // up
+      break;
+    }
+    case UP: {
       space.y = space.y + 1;
-      if (gpads[player].getButton("UP").pressed() &&
-          space.y < 8 &&
+      if (space.y < 8 &&
           ( ! positionContainsPlayer(space)))
       {
         playerCoord[player].y = space.y;
@@ -621,10 +738,11 @@ void updatePlayerCoordFromInput()
       else {
         space.y = playerCoord[player].y;
       }
-      // down
+      break;
+    }
+    case DOWN: {
       space.y = space.y - 1;
-      if (gpads[player].getButton("DOWN").pressed() &&
-          space.y >= 0 &&
+      if (space.y >= 0 &&
           ( ! positionContainsPlayer(space)))
       {
         playerCoord[player].y = space.y;
@@ -632,6 +750,7 @@ void updatePlayerCoordFromInput()
       else {
         // don't need this, because it's the last thing we're checking
       }
+      break;
     }
   }
 }
@@ -640,7 +759,9 @@ void setupControllers()
 {
   control = ControlIO.getInstance(this);
   gpads = new ControlDevice[4];
-  if (isPlaying[0]) {
+  if (isPlaying[0] &&
+      keyboardPlayerIndex != 0)
+  {
     gpads[0] = control.getMatchedDevice("controller");
     if (gpads[0] == null)
     {
@@ -648,7 +769,9 @@ void setupControllers()
       System.exit(-1); // End the program NOW!
     }
   }
-  if (isPlaying[1]) {
+  if (isPlaying[1] &&
+      keyboardPlayerIndex != 1)
+  {
     gpads[1] = control.getMatchedDevice("controller2");
     if (gpads[1] == null)
     {
@@ -656,7 +779,9 @@ void setupControllers()
       System.exit(-1); // End the program NOW!
     }
   }
-  if (isPlaying[2]) {
+  if (isPlaying[2]
+      keyboardPlayerIndex != 2)
+  {
     gpads[2] = control.getMatchedDevice("controller3");
     if (gpads[2] == null)
     {
@@ -664,13 +789,22 @@ void setupControllers()
       System.exit(-1); // End the program NOW!
     }
   }
-  if (isPlaying[3]) {
+  if (isPlaying[3]
+      keyboardPlayerIndex != 3)
+  {
     gpads[3] = control.getMatchedDevice("controller4");
     if (gpads[3] == null)
     {
       println("No suitable device configured");
       System.exit(-1); // End the program NOW!
     }
+  }
+  for (int player = 0; player<playersMax; player++)
+  {
+    previousLeft[player] = false;
+    previousRight[player] = false;
+    previousUp[player] = false;
+    previousDown[player] = false;
   }
 }
 

@@ -14,7 +14,11 @@ boolean useKeyboard = true;
 L3D cube;
 String accessToken = "2d3fda69fc6af796a1bdd2ae849de2cb292268e4";
 String coreName = "L3D";
+
+// drawing to screen / cube
 boolean drawToScreen = true;
+boolean drawWithCube = false;
+PFont f;
 
 // game stuff
 int playersMax = 1;
@@ -69,6 +73,9 @@ void setup()
 
   // controllers
   setupControllers();
+  
+  // drawing to the screen
+  f = createFont("Arial",16,true);
 }
 
 public void draw()
@@ -89,6 +96,12 @@ public void draw()
   updateGameFromInput();
 
   drawSquare();
+
+  if (drawToScreen)
+  {
+    drawCubeOnScreen();
+    drawLevelAndScore();
+  }
 }
 
 
@@ -524,6 +537,10 @@ void continueAnimatingMatches()
       }
       cube.setVoxel(animatingMatchLocations[i], gameboardColor);
     }
+    if (debugFallingAfterAnimation)
+    {
+      println("in continueAnimatingMatches, dropping things above animatingMatchLocations[].");
+    }
     // move everything empty down (immediately)
     // TODO: make these fall the same as the square
     int tempY = 0;
@@ -537,11 +554,20 @@ void continueAnimatingMatches()
           tempVector.set(x,y,z);
           if (positionIsEmpty(tempVector))
           {
+            if (debugFallingAfterAnimation)
+            {
+              println("found empty position: " + tempVector);
+            }
             for (int yAbove = y+1; y<8; y++)
             {
               tempVector.set(x,yAbove,z);
-              if ( ! positionIsEmpty(tempVector))
+              if (( ! positionIsEmpty(tempVector)) &&
+                  ( ! pVectorArrayContainsPosition(squareCoords, tempVector)))
               {
+                if ( debugFallingAfterAnimation)
+                {
+                  println("found non-empty voxel above at " + tempVector);
+                }
                 yDiff = yAbove - y;
                 for (int aY = y; (aY+yDiff) < 8; aY++)
                 {
@@ -764,9 +790,67 @@ void setupL3D()
   cube = new L3D(this, accessToken);
   cube.streamToCore(coreName);
 
-  if (drawToScreen)
+  if (drawWithCube)
   {
     cube.enableDrawing();  //draw the virtual cube
     cube.enablePoseCube();
   }
 }
+
+void drawLevelAndScore()
+{
+  textFont(f,16);
+  fill(color(255,255,255)); 
+  textSize(22);
+  text("Level: " + level,-200,-200);
+  text("Score: " + score,140,-200);
+}
+
+void drawCubeOnScreen()
+{
+  // draw the cube
+  float scale = 20;
+  float doublescale = scale * 2;
+  float side = 8;
+  int tempColor;
+
+  this.translate(this.width/2, this.height/2);
+  this.rotateY((float)cube.xAngle);
+  this.rotateX((float)-cube.yAngle);
+
+  // draw the white "frame"
+  this.stroke(255, 10);
+  for (float x = 0; x < side-1; x++)
+  {
+    for (float y = 0; y < side-1; y++)
+    {
+      for (float z = 0; z < side-1; z++)
+      {
+        this.pushMatrix();
+        this.translate(((x-(side-1)/2) * doublescale) + scale, ((side-1 - y-(side-1)/2) * doublescale) - scale, (((z-(side-1)/2))* doublescale) + scale);
+        this.noFill();
+        this.box(doublescale, doublescale, doublescale);
+        this.popMatrix();
+      }
+    }
+  }
+
+  for (float x = 0; x < side; x++)
+  {
+    for (float y = 0; y < side; y++)
+    {
+      for (float z = 0; z < side; z++)
+      {
+        tempColor = cube.getVoxel(int(x),int(y),int(z));
+        if (tempColor != 0) {
+          this.pushMatrix();
+          this.translate((x-(side-1)/2) * doublescale, (side-1 - y-(side-1)/2) * doublescale, ((z-(side-1)/2))* doublescale);
+          this.fill(tempColor);
+          this.box(scale, scale, scale);
+          this.popMatrix();
+        }
+      }
+    }
+  }
+}
+

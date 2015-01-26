@@ -88,14 +88,13 @@ public void draw()
   if (isGameOver)
   {
     drawGameOver();
-    return;
   }
-
-  drawCubeBackground();
-
-  updateGameFromInput();
-
-  drawSquare();
+  else
+  {
+    drawCubeBackground();
+    updateGameFromInput();
+    drawSquare();
+  }
 
   if (drawToScreen)
   {
@@ -256,13 +255,18 @@ void moveSquareDown()
       anyMoved = true;
     }
   }
-  // if it's a "fixed" position
+  // if it's finally in a "fixed" position
   if ( ! anyMoved)
   {
+    // check for game over
+    checkForGameOver();
+    if ( ! isGameOver)
+    {
+      checkGameboardForMatches();
+      newSquare();
+    }
     // check for matches
-    checkGameboardForMatches();
     isSquareAnimating = false;
-    newSquare();
   }
 }
 
@@ -306,9 +310,6 @@ void checkGameboardForMatches()
       }
     }
   }
-  // we didn't find any matches, so...
-  // check for game over
-  checkForGameOver();
 }
 
 int numberOfMatchesAtPosition(PVector position)
@@ -424,19 +425,32 @@ void drawGameOver()
 void checkForGameOver()
 {
   // check all the top two rows and see if any squares are not black
-  for (int x=0; x<8; x++)
+  // note that this should get called before newSquare() is called
+  for (int i = 0; i<squareCoords.length; i++)
   {
-    for (int z=0; z<8; z++)
+    if ( squareCoords[i].y >= 6 )
     {
-      tempVector.set(x,6,z);
-      tempColor = cube.getVoxel(tempVector);
-      if (( ! pVectorArrayContainsPosition(squareCoords,tempVector)) &&
-          tempColor != 0)
-      {
-        isGameOver = true;
-      }
+      isGameOver = true;
     }
   }
+//  for (int x=0; x<8; x++)
+//  {
+//    for (int z=0; z<8; z++)
+//    {
+//      tempVector.set(x,6,z);
+//      if ( ! positionContainsColor(tempVector, 0))
+//      {
+//        isGameOver = true;
+//        return;
+//      }
+//      tempVector.set(x,7,z);
+//      if ( ! positionContainsColor(tempVector, 0))
+//      {
+//        isGameOver = true;
+//        return;
+//      }
+//    }
+//  }
 }
 
 
@@ -663,7 +677,7 @@ boolean positionContainsColor(PVector position, color colorToCheck)
 
 void keyPressed()
 {
-  if (isSquareAnimating || isAnimatingMatches || isGameOver)
+  if (isSquareAnimating || isAnimatingMatches)
   {
     return;
   }
@@ -671,6 +685,10 @@ void keyPressed()
   {
     if(key == CODED)
     {
+      if (isGameOver)
+      {
+        return;
+      }
       switch(keyCode)
       {
         case UP:
@@ -701,6 +719,12 @@ void keyPressed()
     }
     else if (key == ENTER || key == RETURN)
     {
+      if (isGameOver)
+      {
+        setupForNewGame();
+        setupL3DForNewGame();
+        return;
+      }
       isSquareAnimating = true;
       squareAnimationFrameCount = 0;
       // move square down
@@ -821,7 +845,13 @@ void drawLevelAndScore()
   fill(color(255,255,255)); 
   textSize(22);
   textAlign(CENTER);
-  text("Level: " + level + "             For Next Match: " + numberRequiredForMatch + "             Score: " + score, 0, -200);
+  if ( ! isGameOver) {
+    text("Level: " + level + "             For Next Match: " + numberRequiredForMatch + "             Score: " + score, 0, -200);
+  }
+  else
+  {
+    text("Level: " + level + "            ** GAME OVER **            Score: " + score, 0, -200);
+  }
 //  text("Score: " + score,140,-200);
 }
 

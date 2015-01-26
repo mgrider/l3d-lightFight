@@ -496,6 +496,21 @@ void drawCubeBackground()
 }
 
 
+// level & score
+
+void updateLevelAndScoreWithNewMatch( int matchLength )
+{
+  score = score + (level * matchLength);
+  numberRequiredForMatch++;
+  if (numberRequiredForMatch > 6)
+  {
+    level++;
+    colorCount = (colorCount+1 >= availableColors.length) ? availableColors.length - 1 : colorCount + 1;
+    numberRequiredForMatch = 3;
+  }
+}
+
+
 // match animations
 
 void startAnimatingMatches()
@@ -507,6 +522,7 @@ void startAnimatingMatches()
 
 void continueAnimatingMatches()
 {
+  // blink the match
   if ( matchAnimationBlinkCount % 2 == 0 )
   {
     // turn them black
@@ -532,6 +548,7 @@ void continueAnimatingMatches()
     }
   }
   matchAnimationBlinkCount++;
+  // if blinking is done...
   if (matchAnimationBlinkCount > matchAnimationBlinkTotal)
   {
     // set them all to cube bg color
@@ -546,22 +563,13 @@ void continueAnimatingMatches()
       cube.setVoxel(animatingMatchLocations[i], gameboardColor);
     }
     // update the level & score
-    score = score + (level * matchCount);
-    numberRequiredForMatch++;
-    if (numberRequiredForMatch > 6)
-    {
-      level++;
-      colorCount = (colorCount+1 >= availableColors.length) ? availableColors.length - 1 : colorCount + 1;
-      numberRequiredForMatch = 3;
-    }
+    updateLevelAndScoreWithNewMatch(matchCount);
     if (debugFallingAfterAnimation)
     {
-      println("in continueAnimatingMatches, dropping things above animatingMatchLocations[].");
+      println("in continueAnimatingMatches, starting drops above animatingMatchLocations[].");
     }
     // move everything empty down (immediately)
     // TODO: make these fall the same as the square
-    int tempY = 0;
-    int yDiff = 0;
     for (int x=0; x<8; x++)
     {
       for (int z=0; z<8; z++)
@@ -571,41 +579,33 @@ void continueAnimatingMatches()
           tempVector.set(x,y,z);
           if (positionIsEmpty(tempVector))
           {
-            if (debugFallingAfterAnimation)
-            {
-              println("found empty position: " + tempVector);
+            if (debugFallingAfterAnimation) {
+              println("in continueAnimatingMatches, found empty position: " + tempVector);
             }
-            for (int yAbove = y+1; y<8; y++)
+            int firstNonEmptyY = -1;
+            for (int yAbove = y+1; yAbove<6; yAbove++)
             {
               tempVector.set(x,yAbove,z);
-              if (( ! positionIsEmpty(tempVector)) &&
-                  ( ! pVectorArrayContainsPosition(squareCoords, tempVector)))
+              if ( ! positionIsEmpty(tempVector))
               {
-                if ( debugFallingAfterAnimation)
-                {
-                  println("found non-empty voxel above at " + tempVector);
+                if ( debugFallingAfterAnimation) {
+                  println("in continueAnimatingMatches, found non-empty voxel above at " + tempVector);
                 }
-                yDiff = yAbove - y;
-                for (int aY = y; (aY+yDiff) < 8; aY++)
-                {
-                  tempVector.set(x,aY,z);
-                  if (aY > 5)
-                  {
-                    cube.setVoxel(tempVector, 0);
-                  }
-                  else
-                  {
-                    if ((aY+yDiff) > 5)
-                    {
-                      cube.setVoxel(tempVector,gameboardColor);
-                    }
-                    else
-                    {
-                      cube.setVoxel(tempVector,cube.getVoxel(x,(aY+yDiff),z));
-                    }
-                  }
-                }
+                firstNonEmptyY = yAbove;
                 break;
+              }
+            }
+            if (firstNonEmptyY != -1)
+            {
+              for (int aY = y; aY < 6; aY++)
+              {
+                if ((aY + (firstNonEmptyY-y)) >= 6)
+                {
+                  cube.setVoxel(x, aY, z, gameboardColor);
+                }
+                else {
+                  cube.setVoxel(x, aY, z, cube.getVoxel(x, (aY + firstNonEmptyY - y), z));
+                }
               }
             }
           }

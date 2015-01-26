@@ -27,7 +27,7 @@ boolean isGameOver = false;
 PVector[] squareCoords = new PVector[8];
 color[] squareColors = new color[8];
 boolean isSquareAnimating = false;
-int squareAnimationSpeed = 20; // number of frames between motion
+int squareAnimationSpeed = 10; // number of frames between motion
 int squareAnimationFrameCount = 0;
 PVector tempVector = new PVector(0,0,0);
 int tempColor = 0;
@@ -113,8 +113,9 @@ void setupForNewGame()
   isGameOver = false;
   level = 1;
   score = 0;
+  // for level 1
   numberRequiredForMatch = 3;
-  colorCount = 4; // for level 1
+  colorCount = 4;
   // is this player currently playing?
   isPlaying[0] = true;
   // single player for now
@@ -212,7 +213,7 @@ void moveSquareDirection(PVector direction)
     return;
   }
   if (direction.z < 0 &&
-      (squareCoords[0].z + direction.z) > 7)
+      (squareCoords[0].z + direction.z) < 0)
   {
     return;
   }
@@ -534,20 +535,23 @@ void continueAnimatingMatches()
   if (matchAnimationBlinkCount > matchAnimationBlinkTotal)
   {
     // set them all to cube bg color
+    int matchCount = 0;
     for ( int i=0; i<animatingMatchLocations.length; i++ )
     {
       if (animatingMatchLocations[i].x < 0)
       {
         break;
       }
+      matchCount++;
       cube.setVoxel(animatingMatchLocations[i], gameboardColor);
     }
     // update the level & score
-    score = score + (level * animatingMatchLocations.length);
+    score = score + (level * matchCount);
     numberRequiredForMatch++;
-    if (numberRequiredForMatch > 8)
+    if (numberRequiredForMatch > 6)
     {
       level++;
+      colorCount = (colorCount+1 >= availableColors.length) ? availableColors.length - 1 : colorCount + 1;
       numberRequiredForMatch = 3;
     }
     if (debugFallingAfterAnimation)
@@ -816,8 +820,9 @@ void drawLevelAndScore()
   textFont(f,16);
   fill(color(255,255,255)); 
   textSize(22);
-  text("Level: " + level,-200,-200);
-  text("Score: " + score,140,-200);
+  textAlign(CENTER);
+  text("Level: " + level + "             For Next Match: " + numberRequiredForMatch + "             Score: " + score, 0, -200);
+//  text("Score: " + score,140,-200);
 }
 
 void drawCubeOnScreen()

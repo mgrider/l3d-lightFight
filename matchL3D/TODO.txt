@@ -1,2 +1,1 @@
-game over checking needs to be fixed
-bug with hanging pixels
+display score / level / etc. on the L3D
